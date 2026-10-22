@@ -1,7 +1,7 @@
-from langchain_xai import ChatXAI
+from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
 from langgraph.prebuilt import ToolNode
-from dental_agent.config.settings import XAI_API_KEY, MODEL_NAME, TEMPERATURE
+from dental_agent.config.settings import MODEL_NAME, TEMPERATURE
 from dental_agent.models.state import AppointmentState
 from dental_agent.tools.csv_reader import get_patient_appointments
 from dental_agent.tools.csv_writer import cancel_appointment
@@ -47,8 +47,7 @@ cancellation_tool_node = ToolNode(tools=CANCEL_TOOLS)
 
 
 def cancellation_agent_node(state: AppointmentState) -> dict:
-    llm = ChatXAI(
-        api_key=XAI_API_KEY,
+    llm = ChatOllama(
         model=MODEL_NAME,
         temperature=TEMPERATURE,
     ).bind_tools(CANCEL_TOOLS)

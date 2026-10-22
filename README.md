@@ -1,6 +1,6 @@
 # Dental Appointment Management System
 
-A conversational AI system for managing dental appointments, powered by LangGraph and Grok-4 (xAI). This project demonstrates a multi-agent architecture where specialized agents work together to handle different appointment-related tasks through natural language interactions.
+A conversational AI system for managing dental appointments, powered by LangGraph and a locally running Ollama model. The default model is `qwen2.5:3b`.
 
 ## Overview
 
@@ -10,13 +10,15 @@ This system provides a chat-based interface for patients and clinic staff to:
 - **Cancel existing appointments**
 - **Reschedule appointments** to different time slots
 
-The system uses a supervisor agent that intelligently routes user requests to the appropriate specialized agent based on the detected intent, making it an excellent educational example of multi-agent AI systems.
+The repository includes both a supervisor-and-specialist workflow and a ReAct-style graph used by the CLI. The CLI's graph gives one assistant access to the appointment tools.
 
 ## Architecture
 
-### Multi-Agent Design
+### Supervisor Workflow
 
-The system follows a supervisor pattern where a central coordinator analyzes user messages and routes them to the most appropriate specialized agent:
+The repository also contains a supervisor workflow where a coordinator analyzes user messages and routes them to the appropriate specialized agent. This workflow is defined in `dental_agent/workflows/graph.py`; it is not the graph used by `main.py`.
+
+The CLI in `main.py` uses the ReAct-style graph from `dental_agent/agent.py`: one assistant decides when to call any of the appointment tools, receives the results, and then responds.
 
 ```
                     ┌──────────────┐
@@ -50,7 +52,7 @@ The system follows a supervisor pattern where a central coordinator analyzes use
 
 - **LangGraph**: Orchestrates the multi-agent workflow and state management
 - **LangChain**: Provides the LLM integration and tool framework
-- **Grok-4 (xAI)**: Powers the conversational AI capabilities
+- **Ollama**: Runs the conversational model locally; defaults to `qwen2.5:3b`
 - **Pandas**: Manages the CSV-based data storage
 - **Pydantic**: Handles structured data validation
 
@@ -85,7 +87,8 @@ dental_agent_project/
 ### Prerequisites
 
 - Python 3.10 or higher
-- An xAI API key (Grok-4 model)
+- Ollama installed and running
+- A chat model pulled in Ollama (the default is `qwen2.5:3b`)
 
 ### Steps
 
@@ -94,10 +97,10 @@ dental_agent_project/
    cd dental_agent_project
    ```
 
-2. **Create a virtual environment** (recommended):
+2. **Create and activate a virtual environment** (recommended, PowerShell):
    ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   py -3 -m venv .venv
+   .\.venv\Scripts\Activate.ps1
    ```
 
 3. **Install dependencies**:
@@ -105,16 +108,22 @@ dental_agent_project/
    pip install -r requirements.txt
    ```
 
-4. **Configure environment variables**:
+4. **Start Ollama and ensure the model is available**:
 
-   Create a `.env` file in the project root with your xAI API key:
+   Ollama normally runs as a local service. Check your installed models and pull the default if it is not already installed:
    ```
-   XAI_API_KEY=your_api_key_here
-   MODEL_NAME=grok-4
+   ollama list
+   ollama pull qwen2.5:3b
+   ```
+
+5. **Choose a model (optional)**:
+
+   Create a `.env` file in the project root. Set `MODEL_NAME` to a chat model tag shown by `ollama list`:
+   ```
+   MODEL_NAME=qwen2.5:3b
    TEMPERATURE=0
    ```
-
-   You can obtain an API key from [xAI Console](https://console.x.ai/).
+   The model must support Ollama tool calling. `nomic-embed-text` is an embedding model, not a chat model, so it cannot run this assistant.
 
 ## Usage
 
@@ -201,14 +210,14 @@ Understanding this system helps demonstrate several key AI engineering concepts:
 
 ### 1. Intent Classification
 
-When a user sends a message, the Supervisor agent analyzes the text to determine what action the user wants. This is done using structured output parsing, where the LLM returns a JSON object with:
+When using the supervisor workflow, the Supervisor agent analyzes the text to determine what action the user wants. It uses structured output parsing, where the LLM returns a JSON object with:
 - `intent`: The type of request (get_info, book, cancel, reschedule, end)
 - `next_agent`: Which specialized agent should handle it
 - `reasoning`: Explanation of the decision
 
 ### 2. Tool Use in Agents
 
-Each specialized agent has access to specific tools. For example, the Info Agent can query available slots, but cannot book appointments. This demonstrates the principle of least privilege in agent design.
+In the supervisor workflow, each specialized agent has access to specific tools. For example, the Info Agent can query available slots, but cannot book appointments. The CLI's ReAct agent instead has access to all appointment tools.
 
 ### 3. State Management
 
@@ -238,9 +247,10 @@ Environment variables can be set in `.env`:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| XAI_API_KEY | Your xAI API key | Required |
-| MODEL_NAME | LLM model to use | grok-4 |
+| MODEL_NAME | Ollama model tag | qwen2.5:3b |
 | TEMPERATURE | LLM creativity (0=deterministic) | 0 |
+
+Ollama is expected at its default local address (`http://localhost:11434`).
 
 ## License
 
